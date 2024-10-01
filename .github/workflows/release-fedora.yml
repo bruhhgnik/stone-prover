@@ -3,7 +3,7 @@ name: Release Fedora Package
 on:
   push:
     tags:
-      - 'v*.*.*'  # Runs when a tag is pushed (e.g., v1.0.0)
+      - 'v*.*.*'  # Trigger the workflow when a new tag is pushed (e.g., v1.0.0)
 
 jobs:
   build:
@@ -18,9 +18,10 @@ jobs:
         sudo dnf update -y
         sudo dnf install -y rpm-build gcc make bazel  # Install RPM tools, compilers, and Bazel
 
-    - name: Build with Bazel
+    - name: Build using build.sh
       run: |
-        bazel build //src:stone-prover  # Replace with the correct Bazel build target for stone-prover
+        chmod +x ./build.sh  # Ensure the script is executable
+        ./build.sh           # Run the build script provided by the admin
 
     - name: Package RPM
       run: |
@@ -32,9 +33,9 @@ jobs:
           --define "arch x86_64"
 
     - name: Verify RPM
-      run: ls -la ~/rpmbuild/RPMS/x86_64/
+      run: ls -la ~/rpmbuild/RPMS/x86_64/  # Verify that the RPM was created
 
     - name: Upload RPM to GitHub release
       uses: softprops/action-gh-release@v2
       with:
-        files: ~/rpmbuild/RPMS/x86_64/*.rpm
+        files: ~/rpmbuild/RPMS/x86_64/*.rpm  # Upload the RPM package to the release
