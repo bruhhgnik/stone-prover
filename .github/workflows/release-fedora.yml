@@ -16,17 +16,12 @@ jobs:
     - name: Install dependencies
       run: |
         sudo dnf update -y
-        sudo dnf install -y rpm-build gcc make bazel  # Install RPM tools, compilers, and Bazel
+        sudo dnf install -y rpm-build gcc make bazelisk python3-pip  # Install required packages
 
-    - name: Build using build.sh
+    - name: Build and package RPM
       run: |
-        chmod +x ./build.sh  # Ensure the script is executable
-        ./build.sh           # Run the build script provided by the admin
-
-    - name: Package RPM
-      run: |
-        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-        cp ./stone-prover.spec ~/rpmbuild/SPECS/
+        mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}  # Set up RPM build directories
+        cp ./stone-prover.spec ~/rpmbuild/SPECS/  # Copy the .spec file to the RPM build area
         rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec \
           --define "_topdir $HOME/rpmbuild" \
           --define "version ${GITHUB_REF#refs/tags/}" \
@@ -39,3 +34,4 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: ~/rpmbuild/RPMS/x86_64/*.rpm  # Upload the RPM package to the release
+        
