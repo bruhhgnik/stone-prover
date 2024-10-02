@@ -6,10 +6,11 @@ FROM fedora:latest AS build
 WORKDIR /app
 
 # Install dependencies
+# Add this package to resolve the missing dwarf.h error
 RUN dnf update -y && dnf install -y \
     gcc gcc-c++ make python3-pip wget git \
     elfutils-libelf-devel gmp-devel python3-devel \
-    elfutils-devel \  # Add this package to resolve the missing dwarf.h error
+    elfutils-devel \  
     clang libstdc++-devel libcxx libcxx-devel \
     ncurses-compat-libs \
     && dnf clean all \
