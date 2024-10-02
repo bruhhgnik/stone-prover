@@ -16,7 +16,7 @@ if [ "$os" == "linux" ]; then
         echo "Detected Fedora"
         sudo dnf clean all
         sudo dnf update -y
-        sudo dnf install -y clang gcc-c++ libstdc++-devel libcxx libcxx-devel ncurses-compat-libs gmp-devel python3-devel wget git
+        sudo dnf install -y clang gcc-c++ libstdc++-devel libcxx libcxx-devel ncurses-compat-libs elfutils-devel gmp-devel python3-devel wget git
 
     else
         echo "Detected Debian-based Linux"
