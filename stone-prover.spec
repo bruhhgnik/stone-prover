@@ -1,5 +1,5 @@
 Name: stone-prover
-Version: 3.0.2
+Version: 1.0.0
 Release: 1%{?dist}
 Summary: High-performance proof verification tool
 
@@ -30,5 +30,5 @@ install -m 755 /tmp/stone-prover/build/bazelbin/src/starkware/main/cpu/cpu_air_v
 /usr/local/bin/cpu_air_verifier
 
 %changelog
-* Tue Oct 10 2023 Your Name <youremail@example.com> - 1.0.0-1
+* Wed Oct 02 2024 Your Name <youremail@example.com> - 1.0.0-1
 - Initial RPM package for stone-prover.
