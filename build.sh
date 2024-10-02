@@ -11,10 +11,10 @@ if [ "$os" == "linux" ]; then
     # Detect Fedora or Debian/Ubuntu
     if [ -f /etc/fedora-release ]; then
         echo "Detected Fedora"
-        sudo dnf install -y ncurses elfutils-libelf-devel gmp-devel python3-devel wget  # Added wget
+        sudo dnf install -y ncurses elfutils-libelf-devel gmp-devel python3-devel wget git  # Added git here
     else
         echo "Detected Debian/Ubuntu"
-        sudo apt-get install -y libtinfo5 libdw-dev libgmp3-dev python3-dev wget  # Added wget for Debian/Ubuntu
+        sudo apt-get install -y libtinfo5 libdw-dev libgmp3-dev python3-dev wget git  # Added git for Debian/Ubuntu
     fi
 
     pip install cpplint pytest numpy sympy==1.12.1 cairo-lang==0.12.0
