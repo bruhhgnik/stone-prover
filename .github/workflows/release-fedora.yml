@@ -20,13 +20,16 @@ jobs:
 
     - name: Install dependencies inside Fedora container
       run: |
-        docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip wget git"
+        docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip"
 
-    - name: Install Bazelisk inside Fedora container
+    - name: Install Bazelisk in Fedora container
       run: |
+        docker exec -i fedora-build bash -c "dnf install -y wget git"
         docker exec -i fedora-build bash -c "wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64"
         docker exec -i fedora-build bash -c "chmod +x bazelisk-linux-amd64 && mv bazelisk-linux-amd64 /usr/local/bin/bazelisk"
-        docker exec -i fedora-build bash -c "dnf install -y gmp-devel libdwarf-devel"
+
+    - name: Verify Bazelisk installation
+      run: docker exec -i fedora-build bash -c "bazelisk version"
 
     - name: Copy and run build.sh inside Fedora container
       run: |
@@ -36,7 +39,7 @@ jobs:
     - name: Package RPM inside Fedora container
       run: |
         docker exec -i fedora-build bash -c "mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}"
-        docker cp ./stone-prover.spec fedora-build:/root/rpmbuild/SPECS/stone-prover.spec  # Copy .spec file to Fedora container
+        docker exec -i fedora-build bash -c "cp ./stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
         docker exec -i fedora-build bash -c "rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec --define '_topdir $HOME/rpmbuild'"
 
     - name: Verify RPM creation
