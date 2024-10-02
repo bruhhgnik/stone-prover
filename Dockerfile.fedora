@@ -31,8 +31,8 @@ RUN rm -rf /tmp/bazel-disk-cache
 # Stage 2: Target Image
 FROM fedora:latest AS target
 
-COPY --from=build /app/bazel-bin/src/starkware/main/cpu/cpu_air_prover /usr/local/bin/
-COPY --from=build /app/bazel-bin/src/starkware/main/cpu/cpu_air_verifier /usr/local/bin/
+COPY --from=build /app/build/bazelbin/src/starkware/main/cpu/cpu_air_prover /usr/local/bin/
+COPY --from=build /app/build/bazelbin/src/starkware/main/cpu/cpu_air_verifier /usr/local/bin/
 
 # Install necessary runtime dependencies
 RUN dnf update -y && dnf install -y \
@@ -41,3 +41,5 @@ RUN dnf update -y && dnf install -y \
     && rm -rf /var/cache/dnf
 
 ENTRYPOINT ["/bin/bash"]
+
+#comment
