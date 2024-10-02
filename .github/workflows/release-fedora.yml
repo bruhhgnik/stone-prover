@@ -36,10 +36,13 @@ jobs:
         docker cp ./build.sh fedora-build:/build.sh  # Copy build.sh to Fedora container
         docker exec -i fedora-build bash -c "chmod +x /build.sh && /build.sh"  # Run build.sh inside container
 
+    - name: Copy stone-prover.spec into Fedora container
+      run: docker cp ./stone-prover.spec fedora-build:/stone-prover.spec  # Copy the .spec file to the Fedora container
+
     - name: Package RPM inside Fedora container
       run: |
         docker exec -i fedora-build bash -c "mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}"
-        docker exec -i fedora-build bash -c "cp ./stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
+        docker exec -i fedora-build bash -c "mv /stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
         docker exec -i fedora-build bash -c "rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec --define '_topdir $HOME/rpmbuild'"
 
     - name: Verify RPM creation
