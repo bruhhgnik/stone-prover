@@ -41,6 +41,4 @@ RUN dnf update -y && dnf install -y \
     && rm -rf /var/cache/dnf
 
 ENTRYPOINT ["/bin/bash"]
-
-#lesgu
-#guga
+#comment
