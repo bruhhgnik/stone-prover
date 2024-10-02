@@ -11,10 +11,10 @@ if [ "$os" == "linux" ]; then
     # Detect Fedora or Debian/Ubuntu
     if [ -f /etc/fedora-release ]; then
         echo "Detected Fedora"
-        sudo dnf install -y ncurses elfutils-libelf-devel gmp-devel  # Use Fedora equivalents
+        sudo dnf install -y ncurses elfutils-libelf-devel gmp-devel python3-devel  # Added python3-devel for Python.h
     else
         echo "Detected Debian/Ubuntu"
-        sudo apt-get install -y libtinfo5 libdw-dev libgmp3-dev
+        sudo apt-get install -y libtinfo5 libdw-dev libgmp3-dev python3-dev  # python3-dev for Ubuntu/Debian
     fi
 
     pip install cpplint pytest numpy sympy==1.12.1 cairo-lang==0.12.0
@@ -40,4 +40,4 @@ bazelisk test --cpu=$arch //...
 
 # Create symbolic links for cpu_air_prover and cpu_air_verifier
 ln -s /tmp/stone-prover/build/bazelbin/src/starkware/main/cpu/cpu_air_prover /usr/local/bin/cpu_air_prover
-ln -s /tmp/stone-prover/build/bazelbin/src/starkware/main/cpu/cpu_air_verifier /usr/local/bin/cpu_air_verifier
+ln -s /tmp/stone-prover/build/bazelbin/src/starkware/main/cpu
