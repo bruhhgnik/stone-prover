@@ -13,34 +13,30 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Docker
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
-    - name: Build Fedora container and RPM
+    - name: Build and test
       run: |
-        docker build -t fedora-build -f- . <<EOF
-        FROM fedora:latest
-        RUN dnf update -y && dnf install -y rpm-build gcc gcc-c++ make python3-pip wget git
-        RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 && \
-            chmod +x bazelisk-linux-amd64 && \
-            mv bazelisk-linux-amd64 /usr/local/bin/bazelisk
-        WORKDIR /build
-        COPY . .
-        RUN mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-        RUN cp stone-prover.spec ~/rpmbuild/SPECS/
-        RUN VERSION=\$(echo ${GITHUB_REF#refs/tags/v}) && \
-            rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec --define "version \$VERSION" --define "_topdir \$HOME/rpmbuild"
-        EOF
-
-    - name: Copy RPM from container
-      run: |
-        docker create --name temp fedora-build
-        docker cp temp:/root/rpmbuild/RPMS/x86_64 ./rpms
+        docker buildx build --target test --load -t stone-prover-test .
+        docker create --name temp stone-prover-test
+        docker cp temp:/app/bazel-bin/src/starkware/main/cpu/cpu_air_prover ./cpu_air_prover
+        docker cp temp:/app/bazel-bin/src/starkware/main/cpu/cpu_air_verifier ./cpu_air_verifier
         docker rm temp
 
+    - name: Package RPM
+      run: |
+        docker run --rm -v $(pwd):/rpmbuild/SOURCES fedora:latest \
+          bash -c "dnf install -y rpm-build && \
+                   mkdir -p /rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
+                   cp /rpmbuild/SOURCES/stone-prover.spec /rpmbuild/SPECS/ && \
+                   rpmbuild -ba /rpmbuild/SPECS/stone-prover.spec \
+                   --define \"version ${GITHUB_REF#refs/tags/v}\" \
+                   --define \"_topdir /rpmbuild\""
+        
     - name: Upload RPM to GitHub release
       uses: softprops/action-gh-release@v1
       with:
-        files: ./rpms/*.rpm
+        files: ./RPMS/x86_64/*.rpm
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
