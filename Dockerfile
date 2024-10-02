@@ -1,27 +1,36 @@
-FROM ubuntu:22.04 AS build
+# Stage 1: Build Stage
+FROM fedora:latest AS build
 
 WORKDIR /app
 
+# Install build dependencies
+RUN dnf update -y && dnf install -y \
+    gcc gcc-c++ make python3-pip wget git \
+    elfutils-libelf-devel gmp-devel python3-devel \
+    clang libstdc++-devel libcxx libcxx-devel \
+    ncurses-compat-libs bazelisk \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# Install Python dependencies
+RUN pip install cpplint pytest numpy sympy==1.12.1 cairo-lang==0.12.0
+
+# Copy the source code into the container
 COPY . .
 
-# Install dependencies.
-RUN ./install_deps.sh
+# Build the project using Bazelisk
+RUN bazelisk build //... --cxxopt='-std=c++17'
 
-# Build.
-RUN bazelisk build //...
-
+# Stage 2: Testing Stage (Optional but useful for CI/CD)
 FROM build AS test
 
-# Run tests.
-RUN bazelisk test //...
+# Run tests to verify the build
+RUN bazelisk test //... --cxxopt='-std=c++17'
 
-# Copy cpu_air_prover and cpu_air_verifier.
-RUN ln -s /app/build/bazelbin/src/starkware/main/cpu/cpu_air_prover /bin/cpu_air_prover
-RUN ln -s /app/build/bazelbin/src/starkware/main/cpu/cpu_air_verifier /bin/cpu_air_verifier
-
-# End to end test.
+# Optional: Perform some end-to-end testing or proof verification
 WORKDIR /app/e2e_test/CairoZero
 
+# Example end-to-end test using Cairo files
 RUN cairo-compile fibonacci.cairo --output fibonacci_compiled.json --proof_mode
 
 RUN cairo-run \
@@ -43,13 +52,21 @@ RUN cpu_air_prover \
     --prover_config_file=cpu_air_prover_config.json \
     --parameter_file=cpu_air_params.json
 
-RUN cpu_air_verifier --in_file=fibonacci_proof.json && echo "Successfully verified example proof."
+RUN cpu_air_verifier --in_file=fibonacci_proof.json && echo "Successfully verified proof."
 
-# Stage 2: Target Image
-FROM debian:stable-slim AS target
+# Stage 3: Production Image (Small runtime environment)
+FROM fedora:latest AS target
 
-COPY --from=build /app/build/bazelbin/src/starkware/main/cpu/cpu_air_prover /usr/bin/
-COPY --from=build /app/build/bazelbin/src/starkware/main/cpu/cpu_air_verifier /usr/bin/
+# Copy the prover and verifier binaries from the build stage
+COPY --from=build /app/bazel-bin/src/starkware/main/cpu/cpu_air_prover /usr/local/bin/
+COPY --from=build /app/bazel-bin/src/starkware/main/cpu/cpu_air_verifier /usr/local/bin/
 
-# Install the necessary runtime dependencies
-RUN apt update && apt install -y libdw1
+# Install necessary runtime dependencies
+RUN dnf update -y && dnf install -y \
+    elfutils-libelf gmp libstdc++ \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# Entry point for running the binaries
+ENTRYPOINT ["/bin/bash"]
+
