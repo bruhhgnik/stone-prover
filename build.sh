@@ -8,8 +8,8 @@ dnf install -y clang gcc-c++ libstdc++-devel libcxx libcxx-devel \
 # Install Python dependencies
 pip install cpplint pytest numpy sympy==1.12.1 cairo-lang==0.12.0
 
-# Build with Bazel, specifying C++17 compatibility
+# Build the project with Bazel, ensuring C++17 compatibility
 bazelisk build //... --cxxopt='-std=c++17'
 
-# Optional: Run tests (can be commented out if resource-intensive)
+# Optionally, run tests (uncomment if needed)
 # bazelisk test //... --cxxopt='-std=c++17'

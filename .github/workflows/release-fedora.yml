@@ -1,16 +1,13 @@
-name: Release
+name: Release Fedora Package
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*'  # Trigger the workflow when a new tag is pushed
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, fedora-latest]  # Add Fedora here
+    runs-on: ubuntu-latest  # Using Ubuntu as the host, simulate Fedora in Docker
 
     steps:
     - name: Checkout code
@@ -19,20 +16,22 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
-    - name: Build and package (with different Dockerfiles per OS)
+    - name: Build Docker image (Fedora)
       run: |
-        if [ "${{ matrix.os }}" == "fedora-latest" ]; then
-          docker buildx build --target target --file Dockerfile.fedora --load -t stone-prover-fedora .
-        else
-          docker buildx build --target target --file Dockerfile --load -t stone-prover-${{ matrix.os }} .
-        fi
-        docker create --name temp stone-prover-${{ matrix.os }}
+        docker buildx build --target target --file Dockerfile.fedora --load -t stone-prover-fedora .
+
+    - name: Create container and copy binaries
+      run: |
+        docker create --name temp stone-prover-fedora
         docker cp temp:/usr/local/bin/cpu_air_prover ./cpu_air_prover
         docker cp temp:/usr/local/bin/cpu_air_verifier ./cpu_air_verifier
         docker rm temp
 
-    - name: Package RPM (for Fedora)
-      if: matrix.os == 'fedora-latest'
+    - name: Run tests in Fedora container
+      run: |
+        docker run stone-prover-fedora bazelisk test //... --cxxopt='-std=c++17'
+
+    - name: Package RPM inside Fedora container
       run: |
         docker run --rm -v $(pwd):/rpmbuild/SOURCES fedora:latest \
           bash -c "dnf install -y rpm-build && \
@@ -42,11 +41,12 @@ jobs:
                    --define \"version ${GITHUB_REF#refs/tags/v}\" \
                    --define \"_topdir /rpmbuild\""
 
-    - name: Upload files to a GitHub release
+    - name: Verify RPM creation
+      run: docker run --rm fedora:latest ls -la /rpmbuild/RPMS/x86_64/
+
+    - name: Upload RPM to GitHub release
       uses: softprops/action-gh-release@v2
       with:
-        files: |
-          ./cpu_air_prover
-          ./cpu_air_verifier
+        files: ./RPMS/x86_64/*.rpm  # Upload the RPM package to the release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
