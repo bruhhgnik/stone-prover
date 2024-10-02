@@ -14,10 +14,13 @@ if [ "$os" == "linux" ]; then
     # Check for Fedora or Debian-based Linux
     if [ -f /etc/fedora-release ]; then
         echo "Detected Fedora"
-        sudo dnf install -y ncurses-compat-libs libdw-devel gmp-devel python3-devel wget git
+        sudo dnf clean all          # Clean all cached data
+        sudo dnf update -y          # Update repository metadata
+        sudo dnf install -y ncurses-compat-libs libdwarf-devel gmp-devel python3-devel wget git
 
     else
         echo "Detected Debian-based Linux"
+        sudo apt-get update -y      # Update repository metadata
         sudo apt-get install -y libtinfo5 libdw-dev libgmp3-dev python3-dev wget git
     fi
 
