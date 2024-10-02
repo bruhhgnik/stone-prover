@@ -3,7 +3,7 @@ name: Release Fedora Package
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger the workflow when a new tag is pushed
+      - 'v*.*.*'
 
 jobs:
   build:
@@ -13,7 +13,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    # Free disk space to ensure there's enough room for Docker operations
     - name: Free disk space
       run: |
         sudo rm -rf /usr/share/dotnet
@@ -21,21 +20,17 @@ jobs:
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-    # Set up Docker Buildx for building multi-stage Dockerfile
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
-    # Build the Docker image using the new multi-stage Dockerfile and run tests
     - name: Build and test using Docker
       run: |
         docker buildx build --target test --load -t stone-prover-test .  # Build and run the test stage
-        docker buildx build --target target --load -t stone-prover-prod .  # Build the production image
-        docker create --name temp stone-prover-prod
+        docker create --name temp stone-prover-test
         docker cp temp:/usr/local/bin/cpu_air_prover ./cpu_air_prover
         docker cp temp:/usr/local/bin/cpu_air_verifier ./cpu_air_verifier
         docker rm temp
 
-    # Package the binaries into an RPM using Fedora
     - name: Package RPM
       run: |
         docker run --rm -v $(pwd):/rpmbuild/SOURCES fedora:latest \
@@ -45,8 +40,7 @@ jobs:
                    rpmbuild -ba /rpmbuild/SPECS/stone-prover.spec \
                    --define \"version ${GITHUB_REF#refs/tags/v}\" \
                    --define \"_topdir /rpmbuild\""
-
-    # Upload the generated RPM file to the GitHub release
+        
     - name: Upload RPM to GitHub release
       uses: softprops/action-gh-release@v1
       with:
