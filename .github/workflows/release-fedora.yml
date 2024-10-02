@@ -13,15 +13,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
-    - name: Build and test
+    - name: Build and package
       run: |
-        docker buildx build --target test --load -t stone-prover-test .
-        docker create --name temp stone-prover-test
-        docker cp temp:/app/bazel-bin/src/starkware/main/cpu/cpu_air_prover ./cpu_air_prover
-        docker cp temp:/app/bazel-bin/src/starkware/main/cpu/cpu_air_verifier ./cpu_air_verifier
+        docker buildx build --target target --load -t stone-prover:latest .
+        docker create --name temp stone-prover:latest
+        docker cp temp:/usr/local/bin/cpu_air_prover ./cpu_air_prover
+        docker cp temp:/usr/local/bin/cpu_air_verifier ./cpu_air_verifier
         docker rm temp
 
     - name: Package RPM
