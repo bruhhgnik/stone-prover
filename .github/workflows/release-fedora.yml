@@ -1,4 +1,4 @@
-name: Release Fedora Package
+name: Release
 
 on:
   push:
@@ -7,31 +7,32 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, fedora-latest]  # Add Fedora here
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Free disk space
-      run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf "/usr/local/share/boost"
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
 
-    - name: Build and test using Docker
+    - name: Build and package (with different Dockerfiles per OS)
       run: |
-        docker buildx build --target test --load -t stone-prover-test .  # Build and run the test stage
-        docker create --name temp stone-prover-test
+        if [ "${{ matrix.os }}" == "fedora-latest" ]; then
+          docker buildx build --target target --file Dockerfile.fedora --load -t stone-prover-fedora .
+        else
+          docker buildx build --target target --file Dockerfile --load -t stone-prover-${{ matrix.os }} .
+        fi
+        docker create --name temp stone-prover-${{ matrix.os }}
         docker cp temp:/usr/local/bin/cpu_air_prover ./cpu_air_prover
         docker cp temp:/usr/local/bin/cpu_air_verifier ./cpu_air_verifier
         docker rm temp
 
-    - name: Package RPM
+    - name: Package RPM (for Fedora)
+      if: matrix.os == 'fedora-latest'
       run: |
         docker run --rm -v $(pwd):/rpmbuild/SOURCES fedora:latest \
           bash -c "dnf install -y rpm-build && \
@@ -40,10 +41,12 @@ jobs:
                    rpmbuild -ba /rpmbuild/SPECS/stone-prover.spec \
                    --define \"version ${GITHUB_REF#refs/tags/v}\" \
                    --define \"_topdir /rpmbuild\""
-        
-    - name: Upload RPM to GitHub release
-      uses: softprops/action-gh-release@v1
+
+    - name: Upload files to a GitHub release
+      uses: softprops/action-gh-release@v2
       with:
-        files: ./RPMS/x86_64/*.rpm
+        files: |
+          ./cpu_air_prover
+          ./cpu_air_verifier
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

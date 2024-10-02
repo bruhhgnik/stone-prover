@@ -1,48 +1,55 @@
-# Stage 1: Build
-FROM fedora:latest AS build
+FROM ubuntu:22.04 AS build
 
 WORKDIR /app
 
-# Install dependencies
-RUN dnf update -y && dnf install -y \
-    gcc gcc-c++ make python3-pip wget git \
-    elfutils-libelf-devel gmp-devel python3-devel \
-    clang libstdc++-devel libcxx libcxx-devel \
-    ncurses-compat-libs \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
-
-# Install Bazelisk
-RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 \
-    && chmod +x bazelisk-linux-amd64 \
-    && mv bazelisk-linux-amd64 /usr/local/bin/bazelisk
-
 COPY . .
 
-# Build with Bazel disk cache management
-RUN bazelisk build //... \
-    --disk_cache=/tmp/bazel-disk-cache \
-    --output_user_root=/tmp/bazel-user-root
+# Install dependencies.
+RUN ./install_deps.sh
 
-# Clean up to reduce image size
-RUN rm -rf /tmp/bazel-disk-cache /tmp/bazel-user-root
+# Build.
+RUN bazelisk build //...
 
-# Stage 2: Test (New)
 FROM build AS test
 
-# Run tests
-RUN bazelisk test //... --cxxopt='-std=c++17'
+# Run tests.
+RUN bazelisk test //...
 
-# Stage 3: Target Image
-FROM fedora:latest AS target
+# Copy cpu_air_prover and cpu_air_verifier.
+RUN ln -s /app/build/bazelbin/src/starkware/main/cpu/cpu_air_prover /bin/cpu_air_prover
+RUN ln -s /app/build/bazelbin/src/starkware/main/cpu/cpu_air_verifier /bin/cpu_air_verifier
 
-COPY --from=build /app/bazel-bin/src/starkware/main/cpu/cpu_air_prover /usr/local/bin/
-COPY --from=build /app/bazel-bin/src/starkware/main/cpu/cpu_air_verifier /usr/local/bin/
+# End to end test.
+WORKDIR /app/e2e_test/CairoZero
 
-# Install necessary runtime dependencies
-RUN dnf update -y && dnf install -y \
-    elfutils-libelf gmp libstdc++ \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
+RUN cairo-compile fibonacci.cairo --output fibonacci_compiled.json --proof_mode
 
-ENTRYPOINT ["/bin/bash"]
+RUN cairo-run \
+    --program=fibonacci_compiled.json \
+    --layout=small \
+    --program_input=fibonacci_input.json \
+    --air_public_input=fibonacci_public_input.json \
+    --air_private_input=fibonacci_private_input.json \
+    --trace_file=fibonacci_trace.json \
+    --memory_file=fibonacci_memory.json \
+    --min_steps=512 \
+    --print_output \
+    --proof_mode
+
+RUN cpu_air_prover \
+    --out_file=fibonacci_proof.json \
+    --private_input_file=fibonacci_private_input.json \
+    --public_input_file=fibonacci_public_input.json \
+    --prover_config_file=cpu_air_prover_config.json \
+    --parameter_file=cpu_air_params.json
+
+RUN cpu_air_verifier --in_file=fibonacci_proof.json && echo "Successfully verified example proof."
+
+# Stage 2: Target Image
+FROM debian:stable-slim AS target
+
+COPY --from=build /app/build/bazelbin/src/starkware/main/cpu/cpu_air_prover /usr/bin/
+COPY --from=build /app/build/bazelbin/src/starkware/main/cpu/cpu_air_verifier /usr/bin/
+
+# Install the necessary runtime dependencies
+RUN apt update && apt install -y libdw1
