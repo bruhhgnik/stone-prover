@@ -3,51 +3,44 @@ name: Release Fedora Package
 on:
   push:
     tags:
-      - 'v*.*.*'  # Trigger the workflow when a new tag is pushed (e.g., v1.0.0)
+      - 'v*.*.*'
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Using Ubuntu as the host runner, simulating Fedora with Docker
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout stone-prover repository
+    - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Fedora environment with Docker
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v1
+
+    - name: Build Fedora container and RPM
       run: |
-        docker pull fedora:latest  # Pull the latest Fedora image
-        docker run --name fedora-build -d fedora:latest tail -f /dev/null  # Start the Fedora container
+        docker build -t fedora-build -f- . <<EOF
+        FROM fedora:latest
+        RUN dnf update -y && dnf install -y rpm-build gcc gcc-c++ make python3-pip wget git
+        RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 && \
+            chmod +x bazelisk-linux-amd64 && \
+            mv bazelisk-linux-amd64 /usr/local/bin/bazelisk
+        WORKDIR /build
+        COPY . .
+        RUN mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+        RUN cp stone-prover.spec ~/rpmbuild/SPECS/
+        RUN VERSION=\$(echo ${GITHUB_REF#refs/tags/v}) && \
+            rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec --define "version \$VERSION" --define "_topdir \$HOME/rpmbuild"
+        EOF
 
-    - name: Install dependencies inside Fedora container
+    - name: Copy RPM from container
       run: |
-        docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip wget git"
-
-    - name: Install Bazelisk in Fedora container
-      run: |
-        docker exec -i fedora-build bash -c "wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64"
-        docker exec -i fedora-build bash -c "chmod +x bazelisk-linux-amd64 && mv bazelisk-linux-amd64 /usr/local/bin/bazelisk"
-
-    - name: Verify Bazelisk installation
-      run: docker exec -i fedora-build bash -c "bazelisk version"
-
-    - name: Copy and run build.sh inside Fedora container
-      run: |
-        docker cp ./build.sh fedora-build:/build.sh  # Copy build.sh to Fedora container
-        docker exec -i fedora-build bash -c "chmod +x /build.sh && /build.sh"  # Run build.sh inside container
-
-    - name: Copy stone-prover.spec into Fedora container
-      run: docker cp ./stone-prover.spec fedora-build:/stone-prover.spec  # Copy .spec file into the container
-
-    - name: Package RPM inside Fedora container
-      run: |
-        docker exec -i fedora-build bash -c "mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}"
-        docker exec -i fedora-build bash -c "cp /stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
-        docker exec -i fedora-build bash -c "rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec --define '_topdir $HOME/rpmbuild'"
-
-    - name: Verify RPM creation
-      run: docker exec -i fedora-build bash -c "ls -la ~/rpmbuild/RPMS/x86_64/"
+        docker create --name temp fedora-build
+        docker cp temp:/root/rpmbuild/RPMS/x86_64 ./rpms
+        docker rm temp
 
     - name: Upload RPM to GitHub release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v1
       with:
-        files: ~/rpmbuild/RPMS/x86_64/*.rpm  # Upload the RPM package to the release
+        files: ./rpms/*.rpm
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

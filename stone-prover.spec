@@ -1,34 +1,33 @@
-Name: stone-prover
-Version: 1.0.0
-Release: 1%{?dist}
-Summary: High-performance proof verification tool
+Name:           stone-prover
+Version:        %{version}
+Release:        1%{?dist}
+Summary:        High-performance proof verification tool
 
-License: MIT
-BuildArch: x86_64
+License:        MIT
+URL:            https://github.com/baking-bad/stone-prover
+Source0:        %{name}-%{version}.tar.gz
 
-# Build dependencies
-BuildRequires: gcc, make, bazelisk, rpm-build, python3-pip
-Requires: libtinfo5, libdw-dev, libgmp3-dev, python3, python3-numpy, python3-sympy
+BuildRequires:  gcc gcc-c++ make bazel python3-devel gmp-devel elfutils-libelf-devel
+Requires:       python3 python3-numpy python3-sympy gmp elfutils-libelf
 
 %description
 Stone-prover is a high-performance proof verification tool.
 
 %prep
-git clone https://github.com/baking-bad/stone-prover.git /tmp/stone-prover
+%autosetup -n %{name}-%{version}
 
 %build
-cd /tmp/stone-prover
-bazelisk build --cpu=%{_arch} //...
+./build.sh
 
 %install
-mkdir -p %{buildroot}/usr/local/bin
-install -m 755 /tmp/stone-prover/build/bazelbin/src/starkware/main/cpu/cpu_air_prover %{buildroot}/usr/local/bin/cpu_air_prover
-install -m 755 /tmp/stone-prover/build/bazelbin/src/starkware/main/cpu/cpu_air_verifier %{buildroot}/usr/local/bin/cpu_air_verifier
+mkdir -p %{buildroot}%{_bindir}
+install -m 755 bazel-bin/src/starkware/main/cpu/cpu_air_prover %{buildroot}%{_bindir}/cpu_air_prover
+install -m 755 bazel-bin/src/starkware/main/cpu/cpu_air_verifier %{buildroot}%{_bindir}/cpu_air_verifier
 
 %files
-/usr/local/bin/cpu_air_prover
-/usr/local/bin/cpu_air_verifier
+%{_bindir}/cpu_air_prover
+%{_bindir}/cpu_air_verifier
 
 %changelog
-* Wed Oct 02 2024 Your Name <youremail@example.com> - 1.0.0-1
+* Wed Oct 02 2024 Your Name <youremail@example.com> - %{version}-1
 - Initial RPM package for stone-prover.
