@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Using Ubuntu, but we'll simulate Fedora with Docker
+    runs-on: ubuntu-latest  # Using Ubuntu, but simulate Fedora with Docker
 
     steps:
     - name: Checkout stone-prover repository
@@ -22,21 +22,32 @@ jobs:
       run: |
         docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip"
 
-    - name: Copy and run build.sh inside Fedora container
+    - name: Copy build.sh and stone-prover.spec to Fedora container
       run: |
         docker cp ./build.sh fedora-build:/build.sh  # Copy build.sh to Fedora container
-        docker exec -i fedora-build bash -c "chmod +x /build.sh && /build.sh"  # Run build.sh inside container
+        docker cp ./stone-prover.spec fedora-build:/root/stone-prover.spec  # Copy the .spec file to Fedora container
+
+    - name: Run build.sh inside Fedora container
+      run: |
+        docker exec -i fedora-build bash -c "chmod +x /build.sh && /build.sh"  # Make build.sh executable and run it
 
     - name: Package RPM inside Fedora container
       run: |
+        # Ensure the RPM directories are created
         docker exec -i fedora-build bash -c "mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}"
-        docker exec -i fedora-build bash -c "cp ./stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
+
+        # Check if the .spec file was copied correctly
+        docker exec -i fedora-build bash -c "ls -la /root/stone-prover.spec"
+
+        # Copy .spec file to the RPM build directory and build the RPM
+        docker exec -i fedora-build bash -c "cp /root/stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
         docker exec -i fedora-build bash -c "rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec --define '_topdir $HOME/rpmbuild'"
 
     - name: Verify RPM creation
-      run: docker exec -i fedora-build bash -c "ls -la ~/rpmbuild/RPMS/x86_64/"
+      run: |
+        docker exec -i fedora-build bash -c "ls -la ~/rpmbuild/RPMS/x86_64/"
 
     - name: Upload RPM to GitHub release
       uses: softprops/action-gh-release@v2
       with:
-        files: ~/rpmbuild/RPMS/x86_64/*.rpm  # Upload the RPM package to the release
+        files: ~/rpmbuild/RPMS/x8
