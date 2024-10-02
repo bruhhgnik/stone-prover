@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Using Ubuntu, but we'll simulate Fedora with Docker
+    runs-on: ubuntu-latest  # Using Ubuntu as the host runner, simulating Fedora with Docker
 
     steps:
     - name: Checkout stone-prover repository
@@ -20,11 +20,10 @@ jobs:
 
     - name: Install dependencies inside Fedora container
       run: |
-        docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip"
+        docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip wget git"
 
     - name: Install Bazelisk in Fedora container
       run: |
-        docker exec -i fedora-build bash -c "dnf install -y wget git"
         docker exec -i fedora-build bash -c "wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64"
         docker exec -i fedora-build bash -c "chmod +x bazelisk-linux-amd64 && mv bazelisk-linux-amd64 /usr/local/bin/bazelisk"
 
@@ -37,12 +36,12 @@ jobs:
         docker exec -i fedora-build bash -c "chmod +x /build.sh && /build.sh"  # Run build.sh inside container
 
     - name: Copy stone-prover.spec into Fedora container
-      run: docker cp ./stone-prover.spec fedora-build:/stone-prover.spec  # Copy the .spec file to the Fedora container
+      run: docker cp ./stone-prover.spec fedora-build:/stone-prover.spec  # Copy .spec file into the container
 
     - name: Package RPM inside Fedora container
       run: |
         docker exec -i fedora-build bash -c "mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}"
-        docker exec -i fedora-build bash -c "mv /stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
+        docker exec -i fedora-build bash -c "cp /stone-prover.spec ~/rpmbuild/SPECS/stone-prover.spec"
         docker exec -i fedora-build bash -c "rpmbuild -ba ~/rpmbuild/SPECS/stone-prover.spec --define '_topdir $HOME/rpmbuild'"
 
     - name: Verify RPM creation

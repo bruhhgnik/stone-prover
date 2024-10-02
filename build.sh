@@ -7,41 +7,28 @@ set -e
 os=$(uname | tr '[:upper:]' '[:lower:]')
 arch=$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
 
-# Install dependencies based on the OS
-if [ "$os" == "linux" ]; then
-    export DEBIAN_FRONTEND=noninteractive
+# Fedora-specific installation
+if [ "$os" == "linux" ] && [ -f /etc/fedora-release ]; then
+    echo "Detected Fedora"
 
-    # Check for Fedora or Debian-based Linux
-    if [ -f /etc/fedora-release ]; then
-        echo "Detected Fedora"
-        sudo dnf clean all
-        sudo dnf update -y
-        sudo dnf install -y clang gcc-c++ libstdc++-devel libcxx libcxx-devel ncurses-compat-libs elfutils-devel gmp-devel python3-devel wget git
+    # Clean and update Fedora packages
+    sudo dnf clean all
+    sudo dnf update -y
 
-    else
-        echo "Detected Debian-based Linux"
-        sudo apt-get update -y
-        sudo apt-get install -y clang gcc g++ libtinfo5 libdw-dev libgmp3-dev python3-dev wget git
-    fi
+    # Install dependencies
+    sudo dnf install -y clang gcc-c++ libstdc++-devel libcxx libcxx-devel \
+        ncurses-compat-libs elfutils-devel gmp-devel python3-devel wget git
 
     # Install Python dependencies
     pip install cpplint pytest numpy sympy==1.12.1 cairo-lang==0.12.0
 
     # Install Bazelisk (Bazel wrapper)
-    wget "https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-$os-$arch"
-    chmod 755 "bazelisk-$os-$arch"
-    sudo mv "bazelisk-$os-$arch" /bin/bazelisk
-
-elif [ "$os" == "darwin" ]; then
-    # macOS dependencies
-    echo "Detected macOS"
-    brew install gmp
-
-    # Install Python dependencies
-    python3 -m pip install cpplint pytest numpy sympy==1.12.1 cairo-lang==0.12.0 --break-system-packages
+    wget "https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64"
+    chmod 755 "bazelisk-linux-amd64"
+    sudo mv "bazelisk-linux-amd64" /bin/bazelisk
 
 else
-    echo "$os/$arch is not supported"
+    echo "$os is either not Fedora or not supported."
     exit 1
 fi
 
