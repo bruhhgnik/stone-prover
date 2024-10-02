@@ -6,7 +6,6 @@ FROM fedora:latest AS build
 WORKDIR /app
 
 # Install dependencies
-# Add this package to resolve the missing dwarf.h error
 RUN dnf update -y && dnf install -y \
     gcc gcc-c++ make python3-pip wget git \
     elfutils-libelf-devel gmp-devel python3-devel \
@@ -24,10 +23,10 @@ RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazeli
 COPY . .
 
 # Build with Bazel
-RUN bazelisk build //... --disk_cache=/tmp/bazel-disk-cache --output_user_root=/tmp/bazel-user-root
+RUN bazelisk build //... --disk_cache=/tmp/bazel-disk-cache
 
 # Clean up to reduce image size
-RUN rm -rf /tmp/bazel-disk-cache /tmp/bazel-user-root
+RUN rm -rf /tmp/bazel-disk-cache
 
 # Stage 2: Target Image
 FROM fedora:latest AS target
