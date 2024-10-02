@@ -20,7 +20,13 @@ jobs:
 
     - name: Install dependencies inside Fedora container
       run: |
-        docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip"
+        docker exec -i fedora-build bash -c "dnf update -y && dnf install -y rpm-build gcc make python3-pip wget git"
+
+    - name: Install Bazelisk inside Fedora container
+      run: |
+        docker exec -i fedora-build bash -c "wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64"
+        docker exec -i fedora-build bash -c "chmod +x bazelisk-linux-amd64 && mv bazelisk-linux-amd64 /usr/local/bin/bazelisk"
+        docker exec -i fedora-build bash -c "dnf install -y gmp-devel libdwarf-devel"
 
     - name: Copy and run build.sh inside Fedora container
       run: |
