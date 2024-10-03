@@ -21,8 +21,8 @@ Stone-prover is a high-performance proof verification tool.
 
 %install
 mkdir -p %{buildroot}%{_bindir}
-install -m 755 bazel-bin/src/starkware/main/cpu/cpu_air_prover %{buildroot}%{_bindir}/cpu_air_prover
-install -m 755 bazel-bin/src/starkware/main/cpu/cpu_air_verifier %{buildroot}%{_bindir}/cpu_air_verifier
+install -m 755 bazelbin/src/starkware/main/cpu/cpu_air_prover %{buildroot}%{_bindir}/cpu_air_prover
+install -m 755 bazelbin/src/starkware/main/cpu/cpu_air_verifier %{buildroot}%{_bindir}/cpu_air_verifier
 
 %files
 %{_bindir}/cpu_air_prover
